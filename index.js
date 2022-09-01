@@ -72,7 +72,16 @@ export default class SearchableDropDown extends Component {
     let setSort = this.props.setSort;
     if (!setSort && typeof setSort !== 'function') {
       setSort = (item, searchedText) => {
-        return item.name.toLowerCase().indexOf(searchedText.toLowerCase()) > -1
+        return item.name
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+          .indexOf(
+            searchedText
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '')
+              .toLowerCase(),
+          ) > -1
       };
     }
     var ac = this.props.items.filter((item) => {
@@ -82,13 +91,27 @@ export default class SearchableDropDown extends Component {
       id: -1,
       name: searchedText
     };
-    this.setState({ listItems: ac, item: item });
+    this.setState({ listItems: ac, item });
     const onTextChange = this.props.onTextChange || this.props.textInputProps.onTextChange || this.props.onChangeText || this.props.textInputProps.onChangeText;
-    if (onTextChange && typeof onTextChange === 'function') {
+    onTextChange(searchedText);
+
+  };
+  callSearchedItems = text => {
+    clearInterval(this.typeWait);
+
+    this.typeWait = setTimeout(() => {
+      this.searchedItems(text);
       setTimeout(() => {
-        onTextChange(searchedText);
-      }, 0);
-    }
+        this.searchedItems(text);
+      }, 500);
+    }, 500);
+
+    const item = {
+      id: -1,
+      name: text,
+    };
+
+    this.setState({ item });
   };
 
   renderItems = (item, index) => {
@@ -156,7 +179,7 @@ export default class SearchableDropDown extends Component {
     const textInputProps = { ...this.props.textInputProps };
     const oldSupport = [
       { key: 'ref', val: e => (this.input = e) },
-      { key: 'onTextChange', val: (text) => { this.searchedItems(text) } },
+      { key: 'onTextChange', val: (text) => { this.callSearchedItems(text) } },
       { key: 'underlineColorAndroid', val: this.props.underlineColorAndroid },
       {
         key: 'onFocus',
